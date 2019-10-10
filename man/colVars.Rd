@@ -46,16 +46,16 @@ i <- cbind(sample(nrow(m0), nonzeroes, replace=TRUE),
            sample(ncol(m0), nonzeroes, replace=TRUE))
 m0[i] <- c(runif(nonzeroes - 300, min=-15, max=15), rep(NA, 300))
 m <- as(m0, "dgCMatrix")
+                                                          # Time in sec
+system.time(cv1 <- apply(m0, 2, var))                     #     5.3
+system.time(cv2 <- matrixStats::colVars(m0))              #     1.05
+system.time(cv3 <- dgCMatrix_colVars(m))                  #     0.1
+stopifnot(all.equal(cv1, cv2), all.equal(cv1, cv3))
 
-system.time(cv1 <- apply(m0, 2, var))                     # 5.3s
-system.time(cv2 <- matrixStats::colVars(m0))              # 1.07s
-system.time(cv3 <- dgCMatrix_colVars(m)) 
-#stopifnot(all.equal(cv1, cv2), all.equal(cv1, cv3))
-
-system.time(cv1 <- apply(m0, 2, var, na.rm=TRUE))         # 7.6s
-system.time(cv2 <- matrixStats::colVars(m0, na.rm=TRUE))  # 1.6s
-system.time(cv3 <- dgCMatrix_colVars(m, na.rm=TRUE)) 
-#stopifnot(all.equal(cv1, cv2), all.equal(cv1, cv3))
+system.time(cv1 <- apply(m0, 2, var, na.rm=TRUE))         #     6.9
+system.time(cv2 <- matrixStats::colVars(m0, na.rm=TRUE))  #     1.6
+system.time(cv3 <- dgCMatrix_colVars(m, na.rm=TRUE))      #     0.3
+stopifnot(all.equal(cv1, cv2), all.equal(cv1, cv3))
 }
 
 \keyword{manip}
