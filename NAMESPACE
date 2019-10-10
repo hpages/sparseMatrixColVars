@@ -1,0 +1,7 @@
+useDynLib(sparseMatrixColVars)
+
+import(methods)
+import(Matrix)
+
+export(dgCMatrix_colVars)
+

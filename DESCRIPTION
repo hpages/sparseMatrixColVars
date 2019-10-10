@@ -1,0 +1,10 @@
+Package: sparseMatrixColVars
+Title: An optimized colVars() for dgCMatrix objects
+Description: An optimized colVars() for dgCMatrix objects implemented in C.
+Version: 0.0.1
+Encoding: UTF-8
+Author: Hervé Pagès <hpages@fredhutch.org>
+Maintainer: Hervé Pagès <hpages@fredhutch.org>
+Depends: methods, Matrix
+Suggests: matrixStats
+License: Artistic-2.0
