@@ -1,3 +1,6 @@
+#include <R_ext/Rdynload.h>
+#include <stdio.h>  /* for NULL */
+
 #include "colVars.h"
 
 #define CALLMETHOD_DEF(fun, numArgs) {#fun, (DL_FUNC) &fun, numArgs}
@@ -12,7 +15,7 @@ static const R_CallMethodDef callMethods[] = {
 
 void R_init_sparseMatrixColVars(DllInfo *info)
 {
-        R_registerRoutines(info, NULL, callMethods, NULL, NULL);
-        return;
+	R_registerRoutines(info, NULL, callMethods, NULL, NULL);
+	return;
 }
 

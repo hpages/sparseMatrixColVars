@@ -1,5 +1,7 @@
 #include "colVars.h"
 
+#include <Rdefines.h>
+
 static double col_sum(const double *x, int x_len, int nrow, int narm,
 		      int *sample_size)
 {
