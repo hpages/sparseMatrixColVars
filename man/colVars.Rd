@@ -30,8 +30,8 @@ dgCMatrix_colVars(x, na.rm=FALSE)
     \item The \link[Matrix]{dgCMatrix-class} class in the \pkg{Matrix} package.
   }
   \itemize{
-    \item The \link[matrixStats]{colVars} function in the \pkg{matrixStats}
-          package.
+    \item The \code{\link[matrixStats]{colVars}} function in the
+          \pkg{matrixStats} package.
   }
 }
 

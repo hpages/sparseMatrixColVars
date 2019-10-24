@@ -110,12 +110,22 @@ static void qsort_doubles(double *x, int x_len, int desc)
 	return;
 }
 
+static SEXP get_rownames(SEXP x)
+{
+	SEXP x_dimnames;
+
+	x_dimnames = GET_DIMNAMES(x);
+	if (x_dimnames == R_NilValue)
+		return R_NilValue;
+	return VECTOR_ELT(x_dimnames, 0);
+}
+
 /* --- .Call ENTRY POINT ---
  * Does not handle NAs properly yet.
  */
 SEXP C_rowSort(SEXP x, SEXP decreasing)
 {
-	SEXP x_dim, ans;
+	SEXP x_dim, ans, x_rownames, ans_dimnames;
 	int x_nrow, x_ncol, desc, i;
 	void *row_buf;
 
@@ -125,7 +135,7 @@ SEXP C_rowSort(SEXP x, SEXP decreasing)
 	desc = LOGICAL(decreasing)[0];
 	row_buf = R_alloc(size_of_Rtype(TYPEOF(x)), x_ncol);
 
-	ans = PROTECT(duplicate(x));
+	ans = PROTECT(allocMatrix(TYPEOF(x), x_nrow, x_ncol));
 	switch (TYPEOF(x)) {
 	    case INTSXP:
 		for (i = 0; i < x_nrow; i++) {
@@ -148,6 +158,16 @@ SEXP C_rowSort(SEXP x, SEXP decreasing)
 	    default:
 		error("%s type not supported", CHAR(type2str(TYPEOF(x))));
 	}
+
+	/* Propagate rownames */
+	x_rownames = get_rownames(x);
+	if (x_rownames != R_NilValue) {
+		ans_dimnames = PROTECT(NEW_LIST(2));
+		SET_VECTOR_ELT(ans_dimnames, 0, x_rownames);
+		SET_DIMNAMES(ans, ans_dimnames);
+		UNPROTECT(1);
+	}
+
 	UNPROTECT(1);
 	return ans;
 }
@@ -159,7 +179,7 @@ SEXP C_rowSort(SEXP x, SEXP decreasing)
 
 SEXP C_rowNthLargest(SEXP x, SEXP nth)
 {
-	SEXP x_dim, ans;
+	SEXP x_dim, x_rownames, ans;
 	int x_nrow, x_ncol, nth_len, i, n;
 	void *row_buf;
 
@@ -204,6 +224,12 @@ SEXP C_rowNthLargest(SEXP x, SEXP nth)
 	    default:
 		error("%s type not supported", CHAR(type2str(TYPEOF(x))));
 	}
+
+	/* Propagate rownames */
+	x_rownames = get_rownames(x);
+	if (x_rownames != R_NilValue)
+		SET_NAMES(ans, x_rownames);
+
 	UNPROTECT(1);
 	return ans;
 }
