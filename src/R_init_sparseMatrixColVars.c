@@ -2,6 +2,7 @@
 #include <stdio.h>  /* for NULL */
 
 #include "colVars.h"
+#include "rowSort.h"
 
 #define CALLMETHOD_DEF(fun, numArgs) {#fun, (DL_FUNC) &fun, numArgs}
 
@@ -9,6 +10,9 @@ static const R_CallMethodDef callMethods[] = {
 
 /* colVars.c */
 	CALLMETHOD_DEF(C_dgCMatrix_colVars, 2),
+
+/* rowSort.c */
+	CALLMETHOD_DEF(C_rowSort, 2),
 
 	{NULL, NULL, 0}
 };
