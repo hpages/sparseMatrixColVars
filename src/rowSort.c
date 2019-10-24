@@ -110,7 +110,9 @@ static void qsort_doubles(double *x, int x_len, int desc)
 	return;
 }
 
-/* --- .Call ENTRY POINT --- */
+/* --- .Call ENTRY POINT ---
+ * Does not handle NAs properly yet.
+ */
 SEXP C_rowSort(SEXP x, SEXP decreasing)
 {
 	SEXP x_dim, ans;
@@ -121,7 +123,7 @@ SEXP C_rowSort(SEXP x, SEXP decreasing)
 	x_nrow = INTEGER(x_dim)[0];
 	x_ncol = INTEGER(x_dim)[1];
 	desc = LOGICAL(decreasing)[0];
-	row_buf = R_alloc(size_of_Rtype(TYPEOF(x)), x_nrow);
+	row_buf = R_alloc(size_of_Rtype(TYPEOF(x)), x_ncol);
 
 	ans = PROTECT(duplicate(x));
 	switch (TYPEOF(x)) {
@@ -141,6 +143,62 @@ SEXP C_rowSort(SEXP x, SEXP decreasing)
 			qsort_doubles(row_buf, x_ncol, desc);
 			set_row_doubles(REAL(ans), x_nrow, x_ncol, i,
 					(const double *) row_buf);
+		}
+		break;
+	    default:
+		error("%s type not supported", CHAR(type2str(TYPEOF(x))));
+	}
+	UNPROTECT(1);
+	return ans;
+}
+
+/* --- .Call ENTRY POINT ---
+ * Does not handle NAs properly yet.
+ */
+#define GET_NTH_ELT(i) (nth_len == 1 ? INTEGER(nth)[0] : INTEGER(nth)[i])
+
+SEXP C_rowNthLargest(SEXP x, SEXP nth)
+{
+	SEXP x_dim, ans;
+	int x_nrow, x_ncol, nth_len, i, n;
+	void *row_buf;
+
+	x_dim = GET_DIM(x);
+	x_nrow = INTEGER(x_dim)[0];
+	x_ncol = INTEGER(x_dim)[1];
+	nth_len = LENGTH(nth);
+	if (nth_len != 1 && nth_len != x_nrow)
+		error("invalid 'nth'");
+	row_buf = R_alloc(size_of_Rtype(TYPEOF(x)), x_ncol);
+
+	ans = PROTECT(allocVector(TYPEOF(x), x_nrow));
+	switch (TYPEOF(x)) {
+	    case INTSXP:
+		for (i = 0; i < x_nrow; i++) {
+			get_row_ints(INTEGER(x), x_nrow, x_ncol, i,
+				     (int *) row_buf);
+			qsort_ints(row_buf, x_ncol, 1);
+			n = GET_NTH_ELT(i);
+			if (n == NA_INTEGER || n < 1 || n > x_ncol) {
+				UNPROTECT(1);
+				error("'nth' must contain non-NA values "
+				      "that are >= 1 and <= ncol(x)");
+			}
+			INTEGER(ans)[i] = ((const int *) row_buf)[n - 1];
+		}
+		break;
+	    case REALSXP:
+		for (i = 0; i < x_nrow; i++) {
+			get_row_doubles(REAL(x), x_nrow, x_ncol, i,
+					(double *) row_buf);
+			qsort_doubles(row_buf, x_ncol, 1);
+			n = GET_NTH_ELT(i);
+			if (n == NA_INTEGER || n < 1 || n > x_ncol) {
+				UNPROTECT(1);
+				error("'nth' must contain non-NA values "
+				      "that are >= 1 and <= ncol(x)");
+			}
+			REAL(ans)[i] = ((const double *) row_buf)[n - 1];
 		}
 		break;
 	    default:

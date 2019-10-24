@@ -13,6 +13,7 @@ static const R_CallMethodDef callMethods[] = {
 
 /* rowSort.c */
 	CALLMETHOD_DEF(C_rowSort, 2),
+	CALLMETHOD_DEF(C_rowNthLargest, 2),
 
 	{NULL, NULL, 0}
 };
