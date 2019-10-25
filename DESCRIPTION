@@ -5,7 +5,7 @@ Version: 0.0.2
 Encoding: UTF-8
 Author: Hervé Pagès <hpages@fredhutch.org>
 Maintainer: Hervé Pagès <hpages@fredhutch.org>
-Depends: methods, Matrix
+Depends: methods, stats, Matrix
 Imports: S4Vectors
 LinkingTo: S4Vectors
 Suggests: matrixStats

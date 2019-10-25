@@ -1,6 +1,7 @@
 useDynLib(sparseMatrixColVars)
 
 import(methods)
+importFrom(stats, setNames)
 import(Matrix)
 
 ## For some reason S4Vectors needs to appear in the NAMESPACE file otherwise
@@ -8,7 +9,11 @@ import(Matrix)
 ## something like:
 ##   Error in rowSort(m, use.radix = TRUE) :
 ##     function '_sort_ints' not provided by package 'S4Vectors'
-importFrom(S4Vectors)  # does not actually import anything!
+importFrom(S4Vectors, isSingleNumber)
 
-export(dgCMatrix_colVars, rowSort, baseR_rowNthLargest, rowNthLargest)
+export(
+    dgCMatrix_colVars,
+    simple_rowSort, rowSort,
+    simple_rowNthLargest, baseR_rowNthLargest, rowNthLargest
+)
 
