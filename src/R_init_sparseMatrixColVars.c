@@ -12,7 +12,7 @@ static const R_CallMethodDef callMethods[] = {
 	CALLMETHOD_DEF(C_dgCMatrix_colVars, 2),
 
 /* rowSort.c */
-	CALLMETHOD_DEF(C_rowSort, 2),
+	CALLMETHOD_DEF(C_rowSort, 3),
 	CALLMETHOD_DEF(C_rowNthLargest, 2),
 
 	{NULL, NULL, 0}

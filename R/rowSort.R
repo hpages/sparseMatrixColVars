@@ -2,14 +2,16 @@
 ### matrix with respect to the vertical axis. More precisely: if x1 is
 ### rowSort(x) then rowSort(x, decreasing=TRUE) should be identical to
 ### x1[ , rev(seq_len(ncol(x1)))]
-rowSort <- function(x, decreasing=FALSE)
+rowSort <- function(x, decreasing=FALSE, use.radix.sort=NA)
 {
     stopifnot(is.matrix(x),
               storage.mode(x) %in% c("integer", "double"),
               is.logical(decreasing), length(decreasing) == 1L,
-                                      !is.na(decreasing))
+                                      !is.na(decreasing),
+              is.logical(use.radix.sort), length(use.radix.sort) == 1L)
 
-    .Call("C_rowSort", x, decreasing, PACKAGE="sparseMatrixColVars")
+    .Call("C_rowSort", x, decreasing, use.radix.sort,
+                       PACKAGE="sparseMatrixColVars")
 }
 
 ### A fast pure base R implementation of rowSort(x)[ , ncol(x) - nth + 1L]

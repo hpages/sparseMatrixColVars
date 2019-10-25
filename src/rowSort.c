@@ -2,6 +2,7 @@
 
 #include <Rdefines.h>
 #include <stdlib.h>  /* for qsort() */
+#include "S4Vectors_interface.h"
 
 static size_t size_of_Rtype(SEXPTYPE Rtype)
 {
@@ -14,8 +15,8 @@ static size_t size_of_Rtype(SEXPTYPE Rtype)
 	error("%s type not supported", CHAR(type2str(Rtype)));
 }
 
-static void get_row_ints(const int *x, int x_nrow, int x_ncol, int i,
-			 int *row_buf)
+static void get_int_row(const int *x, int x_nrow, int x_ncol, int i,
+			int *row_buf)
 {
 	int j;
 	long long int offset;
@@ -25,8 +26,8 @@ static void get_row_ints(const int *x, int x_nrow, int x_ncol, int i,
 	return;
 }
 
-static void get_row_doubles(const double *x, int x_nrow, int x_ncol, int i,
-			    double *row_buf)
+static void get_double_row(const double *x, int x_nrow, int x_ncol, int i,
+			   double *row_buf)
 {
 	int j;
 	long long int offset;
@@ -36,8 +37,8 @@ static void get_row_doubles(const double *x, int x_nrow, int x_ncol, int i,
 	return;
 }
 
-static void set_row_ints(int *x, int x_nrow, int x_ncol, int i,
-			 const int *row_buf)
+static void set_int_row(int *x, int x_nrow, int x_ncol, int i,
+			const int *row_buf)
 {
 	int j;
 	long long int offset;
@@ -47,8 +48,8 @@ static void set_row_ints(int *x, int x_nrow, int x_ncol, int i,
 	return;
 }
 
-static void set_row_doubles(double *x, int x_nrow, int x_ncol, int i,
-			    const double *row_buf)
+static void set_double_row(double *x, int x_nrow, int x_ncol, int i,
+			   const double *row_buf)
 {
 	int j;
 	long long int offset;
@@ -110,6 +111,39 @@ static void qsort_doubles(double *x, int x_len, int desc)
 	return;
 }
 
+static void qsort_int_row(const int *x, int x_nrow, int x_ncol, int i,
+			  int desc, int *out, int *row_buf)
+{
+	get_int_row(x, x_nrow, x_ncol, i, row_buf);
+	qsort_ints(row_buf, x_ncol, desc);
+	set_int_row(out, x_nrow, x_ncol, i, row_buf);
+	return;
+}
+
+static void qsort_double_row(const double *x, int x_nrow, int x_ncol, int i,
+			     int desc, double *out, double *row_buf)
+{
+	get_double_row(x, x_nrow, x_ncol, i, row_buf);
+	qsort_doubles(row_buf, x_ncol, desc);
+	set_double_row(out, x_nrow, x_ncol, i, row_buf);
+	return;
+}
+
+static void rxsort_int_row(const int *x, int x_nrow, int x_ncol, int i,
+			   int desc, int *out, int *base,
+			   unsigned short int *rxbuf1, int *rxbuf2)
+{
+	int j;
+	long long int offset;
+
+	for (j = 0, offset = i; j < x_ncol; j++, offset += x_nrow)
+		base[j] = offset;
+	sort_ints(base, x_ncol, x, desc, 1, rxbuf1, rxbuf2);
+	for (j = 0, offset = i; j < x_ncol; j++, offset += x_nrow)
+		out[offset] = x[base[j]];
+	return;
+}
+
 static SEXP get_rownames(SEXP x)
 {
 	SEXP x_dimnames;
@@ -123,11 +157,13 @@ static SEXP get_rownames(SEXP x)
 /* --- .Call ENTRY POINT ---
  * Does not handle NAs properly yet.
  */
-SEXP C_rowSort(SEXP x, SEXP decreasing)
+SEXP C_rowSort(SEXP x, SEXP decreasing, SEXP use_radix_sort)
 {
 	SEXP x_dim, ans, x_rownames, ans_dimnames;
 	int x_nrow, x_ncol, desc, i;
 	void *row_buf;
+	int use_rx, *rxbuf2 = NULL;
+	unsigned short int *rxbuf1 = NULL;
 
 	x_dim = GET_DIM(x);
 	x_nrow = INTEGER(x_dim)[0];
@@ -135,25 +171,49 @@ SEXP C_rowSort(SEXP x, SEXP decreasing)
 	desc = LOGICAL(decreasing)[0];
 	row_buf = R_alloc(size_of_Rtype(TYPEOF(x)), x_ncol);
 
+	use_rx = LOGICAL(use_radix_sort)[0];
+	if (TYPEOF(x) == INTSXP) {
+		/* Radix sort starts to be beneficial when the number of cols
+		   is > 1024 (based on empirical results on my laptop).
+		   The benefits seems minor though unless the number of cols
+		   is really large (i.e. > 1e6) */
+		if (use_rx == NA_INTEGER)
+			use_rx = x_ncol > 1024;
+		if (use_rx) {
+			rxbuf1 = (unsigned short int *)
+				 R_alloc(sizeof(unsigned short int), x_ncol);
+			rxbuf2 = (int *) R_alloc(sizeof(int), x_ncol);
+		}
+	} else {
+		if (use_rx != NA_INTEGER)
+			warning("'use.radix.sort' is only supported "
+				"when 'storage.mode(x)'\n  "
+				"is \"integer\" so was ignored");
+	}
+
 	ans = PROTECT(allocMatrix(TYPEOF(x), x_nrow, x_ncol));
 	switch (TYPEOF(x)) {
 	    case INTSXP:
-		for (i = 0; i < x_nrow; i++) {
-			get_row_ints(INTEGER(x), x_nrow, x_ncol, i,
-				     (int *) row_buf);
-			qsort_ints(row_buf, x_ncol, desc);
-			set_row_ints(INTEGER(ans), x_nrow, x_ncol, i,
-				     (const int *) row_buf);
+		if (use_rx) {
+			/* Radix sort */
+			for (i = 0; i < x_nrow; i++)
+				rxsort_int_row(
+					INTEGER(x), x_nrow, x_ncol, i, desc,
+					INTEGER(ans), (int *) row_buf,
+					rxbuf1, rxbuf2);
+		} else {
+			/* qsort() */
+			for (i = 0; i < x_nrow; i++)
+				qsort_int_row(
+					INTEGER(x), x_nrow, x_ncol, i, desc,
+					INTEGER(ans), (int *) row_buf);
 		}
 		break;
 	    case REALSXP:
-		for (i = 0; i < x_nrow; i++) {
-			get_row_doubles(REAL(x), x_nrow, x_ncol, i,
-					(double *) row_buf);
-			qsort_doubles(row_buf, x_ncol, desc);
-			set_row_doubles(REAL(ans), x_nrow, x_ncol, i,
-					(const double *) row_buf);
-		}
+		for (i = 0; i < x_nrow; i++)
+			qsort_double_row(
+				REAL(x), x_nrow, x_ncol, i, desc,
+				REAL(ans), (double *) row_buf);
 		break;
 	    default:
 		error("%s type not supported", CHAR(type2str(TYPEOF(x))));
@@ -195,8 +255,8 @@ SEXP C_rowNthLargest(SEXP x, SEXP nth)
 	switch (TYPEOF(x)) {
 	    case INTSXP:
 		for (i = 0; i < x_nrow; i++) {
-			get_row_ints(INTEGER(x), x_nrow, x_ncol, i,
-				     (int *) row_buf);
+			get_int_row(INTEGER(x), x_nrow, x_ncol, i,
+				    (int *) row_buf);
 			qsort_ints(row_buf, x_ncol, 1);
 			n = GET_NTH_ELT(i);
 			if (n == NA_INTEGER || n < 1 || n > x_ncol) {
@@ -209,8 +269,8 @@ SEXP C_rowNthLargest(SEXP x, SEXP nth)
 		break;
 	    case REALSXP:
 		for (i = 0; i < x_nrow; i++) {
-			get_row_doubles(REAL(x), x_nrow, x_ncol, i,
-					(double *) row_buf);
+			get_double_row(REAL(x), x_nrow, x_ncol, i,
+				       (double *) row_buf);
 			qsort_doubles(row_buf, x_ncol, 1);
 			n = GET_NTH_ELT(i);
 			if (n == NA_INTEGER || n < 1 || n > x_ncol) {

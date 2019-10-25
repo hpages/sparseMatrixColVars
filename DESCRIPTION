@@ -6,5 +6,7 @@ Encoding: UTF-8
 Author: Hervé Pagès <hpages@fredhutch.org>
 Maintainer: Hervé Pagès <hpages@fredhutch.org>
 Depends: methods, Matrix
+Imports: S4Vectors
+LinkingTo: S4Vectors
 Suggests: matrixStats
 License: Artistic-2.0

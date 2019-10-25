@@ -11,7 +11,7 @@
 }
 
 \usage{
-rowSort(x, decreasing=FALSE)
+rowSort(x, decreasing=FALSE, use.radix.sort=NA)
 }
 
 \arguments{
@@ -24,6 +24,14 @@ rowSort(x, decreasing=FALSE)
     respect to the vertical axis. More precisely: if \code{y} is
     \code{rowSort(x)} then \code{rowSort(x, decreasing=TRUE)} should
     be identical to \code{y[ , rev(seq_len(ncol(y)))]}.
+  }
+  \item{use.radix.sort}{
+    Only supported when \code{x} is a matrix of integers (i.e. when
+    \code{storage.mode(x) == "integer"}).
+    If \code{TRUE}, a radix sort is used. If \code{FALSE}, \code{qsort()}
+    from the standard C library is used. If \code{NA}, the sorting algorithm
+    is automatically choosen based on the number of columns in the matrix:
+    radix if more than 1024 columns and \code{qsort()} otherwise.
   }
 }
 
